@@ -7,20 +7,32 @@ import { createParticles } from './renderer';
 
 export type { GameState, GameData };
 
-function moveDir(dir: Direction): Vec2 {
+export function dirVec(dir: Direction): Vec2 {
   switch (dir) {
-    case 'UP': return { x: 0, y: -1 };
-    case 'DOWN': return { x: 0, y: 1 };
-    case 'LEFT': return { x: -1, y: 0 };
-    case 'RIGHT': return { x: 1, y: 0 };
-    default: return { x: 0, y: 0 };
+    case 'UP':    return { x: 0, y: -1 };
+    case 'DOWN':  return { x: 0, y:  1 };
+    case 'LEFT':  return { x: -1, y: 0 };
+    case 'RIGHT': return { x:  1, y: 0 };
+    default:      return { x: 0, y: 0 };
   }
+}
+
+// Tile coords from pixel position — always floor-based
+export function pixelToTile(px: number, py: number): Vec2 {
+  return {
+    x: Math.floor(px / TILE_SIZE),
+    y: Math.floor(py / TILE_SIZE),
+  };
+}
+
+// True when a pixel position is aligned to the tile grid (within tolerance)
+function atTileCenter(px: number, py: number): boolean {
+  return (px % TILE_SIZE) === 0 && (py % TILE_SIZE) === 0;
 }
 
 function canWalk(maze: number[][], tx: number, ty: number): boolean {
   if (ty < 0 || ty >= MAZE_ROWS) return false;
-  // Tunnels on sides
-  if (tx < 0 || tx >= MAZE_COLS) return true;
+  if (tx < 0 || tx >= MAZE_COLS) return true; // tunnel exit
   const cell = maze[ty][tx];
   return cell !== CELL.WALL && cell !== CELL.GHOST_HOUSE && cell !== CELL.GHOST_DOOR;
 }
@@ -81,6 +93,77 @@ export interface EngineState {
   dyingFrame: number;
 }
 
+// Move a character along one axis by `speed` pixels per frame, snapping to
+// tile centers and checking walls. Returns the updated pixel coordinate.
+function movePlayer(player: Player, maze: number[][], dt: number): Player {
+  const p = { ...player, pos: { ...player.pos }, tilePos: { ...player.tilePos } };
+
+  // Scale speed by dt (speed is in pixels per 16ms frame at 60fps)
+  const dist = p.speed * (dt / 16);
+
+  let remaining = dist;
+  const MAX_ITER = 8; // safety cap
+  for (let iter = 0; iter < MAX_ITER && remaining > 0.001; iter++) {
+    const { x, y } = p.pos;
+
+    if (atTileCenter(x, y)) {
+      // Wrap tunnels
+      let tx = x / TILE_SIZE;
+      let ty = y / TILE_SIZE;
+      if (tx < 0)          { tx = MAZE_COLS - 1; p.pos.x = tx * TILE_SIZE; }
+      if (tx >= MAZE_COLS) { tx = 0;              p.pos.x = 0; }
+      p.tilePos = { x: tx, y: ty };
+
+      // Try to switch to queued direction
+      const ndv = dirVec(p.nextDir);
+      if (canWalk(maze, tx + ndv.x, ty + ndv.y)) {
+        p.dir = p.nextDir;
+      }
+
+      // Can we continue in current direction?
+      const dv = dirVec(p.dir);
+      if (!canWalk(maze, tx + dv.x, ty + dv.y)) {
+        // Blocked — stop here
+        remaining = 0;
+        break;
+      }
+    }
+
+    // Move up to the next tile boundary (or remaining distance, whichever is less)
+    const dv = dirVec(p.dir);
+    const { x: cx, y: cy } = p.pos;
+
+    // How far to the next tile edge in the direction of travel
+    let gap: number;
+    if (dv.x !== 0) {
+      const nextEdge = dv.x > 0
+        ? (Math.floor(cx / TILE_SIZE) + 1) * TILE_SIZE
+        : Math.ceil(cx / TILE_SIZE - 1) * TILE_SIZE;
+      gap = Math.abs(nextEdge - cx);
+    } else {
+      const nextEdge = dv.y > 0
+        ? (Math.floor(cy / TILE_SIZE) + 1) * TILE_SIZE
+        : Math.ceil(cy / TILE_SIZE - 1) * TILE_SIZE;
+      gap = Math.abs(nextEdge - cy);
+    }
+
+    if (gap === 0) gap = TILE_SIZE; // already on edge, move a full tile
+
+    const step = Math.min(remaining, gap);
+    p.pos.x += dv.x * step;
+    p.pos.y += dv.y * step;
+    remaining -= step;
+
+    // Snap to grid to avoid float drift
+    if (Math.abs(p.pos.x % TILE_SIZE) < 0.01) p.pos.x = Math.round(p.pos.x);
+    if (Math.abs(p.pos.y % TILE_SIZE) < 0.01) p.pos.y = Math.round(p.pos.y);
+  }
+
+  // Update tile position
+  p.tilePos = pixelToTile(p.pos.x, p.pos.y);
+  return p;
+}
+
 export function updateEngine(state: EngineState, dt: number, inputDir: Direction | null): EngineState {
   const { gameData } = state;
   if (gameData.state !== 'PLAYING') return state;
@@ -113,7 +196,6 @@ export function updateEngine(state: EngineState, dt: number, inputDir: Direction
           dyingFrame: 0,
         };
       }
-      // Reset positions
       const reset = createInitialState();
       return {
         ...reset,
@@ -135,51 +217,13 @@ export function updateEngine(state: EngineState, dt: number, inputDir: Direction
   }
 
   // ---- PLAYER MOVEMENT ----
+  // Queue the new direction (will be applied at next tile center)
   if (inputDir) player = { ...player, nextDir: inputDir };
 
-  player = { ...player };
-  const steps = Math.ceil(player.speed);
-  const stepSize = player.speed / steps;
-
-  for (let s = 0; s < steps; s++) {
-    const px = Math.round(player.pos.x / TILE_SIZE);
-    const py = Math.round(player.pos.y / TILE_SIZE);
-    const atCenter = Math.abs(player.pos.x - px * TILE_SIZE) < stepSize + 0.5 &&
-                     Math.abs(player.pos.y - py * TILE_SIZE) < stepSize + 0.5;
-
-    if (atCenter) {
-      player.pos.x = px * TILE_SIZE;
-      player.pos.y = py * TILE_SIZE;
-
-      // Tunnel teleport
-      if (px < 0) { player.pos.x = (MAZE_COLS - 1) * TILE_SIZE; }
-      if (px >= MAZE_COLS) { player.pos.x = 0; }
-
-      const tx = Math.round(player.pos.x / TILE_SIZE);
-      const ty = py;
-      player.tilePos = { x: tx, y: ty };
-
-      // Try next direction
-      const nd = player.nextDir;
-      const ndv = moveDir(nd);
-      if (canWalk(maze, tx + ndv.x, ty + ndv.y)) {
-        player.dir = nd;
-      }
-    }
-
-    const dv = moveDir(player.dir);
-    const nx = player.pos.x + dv.x * stepSize;
-    const ny = player.pos.y + dv.y * stepSize;
-    const ntx = Math.round(nx / TILE_SIZE);
-    const nty = Math.round(ny / TILE_SIZE);
-
-    if (canWalk(maze, ntx, nty)) {
-      player.pos.x = nx;
-      player.pos.y = ny;
-    }
-  }
+  player = movePlayer(player, maze, dt);
 
   // Mouth animation
+  player = { ...player };
   player.animTimer += dt;
   if (player.animTimer > 50) {
     player.animTimer = 0;
