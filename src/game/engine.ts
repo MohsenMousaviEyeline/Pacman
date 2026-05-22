@@ -54,6 +54,7 @@ export function createInitialState(): {
       tilePos: { x: 13, y: 23 },
       dir: 'LEFT',
       nextDir: 'LEFT',
+      moving: false,
       speed: PACMAN_SPEED,
       mouthAngle: 0.2,
       mouthDir: 1,
@@ -217,10 +218,15 @@ export function updateEngine(state: EngineState, dt: number, inputDir: Direction
   }
 
   // ---- PLAYER MOVEMENT ----
-  // Queue the new direction (will be applied at next tile center)
-  if (inputDir) player = { ...player, nextDir: inputDir };
+  // First keypress unlocks movement and queues the direction
+  if (inputDir) {
+    player = { ...player, nextDir: inputDir, moving: true };
+  }
 
-  player = movePlayer(player, maze, dt);
+  // Only move once the player has pressed a key
+  if (player.moving) {
+    player = movePlayer(player, maze, dt);
+  }
 
   // Mouth animation
   player = { ...player };

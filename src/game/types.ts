@@ -43,6 +43,7 @@ export interface Player {
   mouthAngle: number;
   mouthDir: number;
   animTimer: number;
+  moving: boolean;   // false until first directional keypress
 }
 
 export type GameState = 'MENU' | 'PLAYING' | 'PAUSED' | 'GAME_OVER' | 'WIN' | 'DYING';

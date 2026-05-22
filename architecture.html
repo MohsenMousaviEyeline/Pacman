@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CYBER-PAC — Architecture &amp; Game Loop</title>
+  <style>
+    :root {
+      --bg:          #f8f9fb;
+      --surface:     #ffffff;
+      --surface-alt: #f2f4f7;
+      --border:      #e2e5ea;
+      --border-mid:  #d0d4db;
+      --text-primary:   #1a1d23;
+      --text-secondary: #4b5563;
+      --text-muted:     #8a93a2;
+      --accent:      #2563eb;
+      --accent-light:#eff4ff;
+      --accent-mid:  #bfdbfe;
+      --green:       #16a34a;
+      --green-light: #f0fdf4;
+      --red:         #dc2626;
+      --red-light:   #fef2f2;
+      --amber:       #d97706;
+      --amber-light: #fffbeb;
+      --purple:      #7c3aed;
+      --purple-light:#f5f3ff;
+      --radius:      8px;
+      --shadow-sm:   0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md:   0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+      --shadow-lg:   0 10px 30px rgba(0,0,0,0.09), 0 4px 8px rgba(0,0,0,0.06);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── LAYOUT ── */
+    .page { max-width: 1120px; margin: 0 auto; padding: 0 1.5rem 6rem; }
+
+    /* ── TOP NAV BAR ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar-brand {
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .topbar-nav {
+      display: flex;
+      gap: 0.25rem;
+      flex-wrap: wrap;
+    }
+    .topbar-nav a {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 0.3rem 0.7rem;
+      border-radius: 20px;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .topbar-nav a:hover {
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 4rem 0 3rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 3rem;
+    }
+    .hero-eyebrow {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-light);
+      border: 1px solid var(--accent-mid);
+      border-radius: 20px;
+      padding: 0.3rem 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .hero-title {
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      line-height: 1.1;
+    }
+    .hero-title span { color: var(--accent); }
+    .hero-sub {
+      margin-top: 0.75rem;
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .hero-meta {
+      margin-top: 2rem;
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+    .hero-stat {
+      text-align: center;
+    }
+    .hero-stat .stat-val {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: block;
+    }
+    .hero-stat .stat-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .hero-pac {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-top: 2rem;
+    }
+    .pac {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: #f59e0b;
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .pac::before {
+      content: '';
+      position: absolute;
+      top: 50%; right: 0; left: 50%;
+      width: 50%; height: 50%;
+      background: var(--bg);
+      transform-origin: left center;
+      animation: mouthOpen 0.35s ease-in-out infinite alternate;
+    }
+    .pac::after {
+      content: '';
+      position: absolute;
+      bottom: 0; right: 0; left: 50%;
+      width: 50%; height: 50%;
+      background: var(--bg);
+      transform-origin: left center;
+      animation: mouthClose 0.35s ease-in-out infinite alternate;
+    }
+    @keyframes mouthOpen  { from { transform: rotate(0deg); } to { transform: rotate(-42deg); } }
+    @keyframes mouthClose { from { transform: rotate(0deg); } to { transform: rotate(42deg); } }
+    .dot-row { display: flex; gap: 8px; align-items: center; }
+    .dot-pill {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--border-mid);
+      animation: dotEat 1.5s linear infinite;
+    }
+    .dot-pill:nth-child(1) { animation-delay: 0s; }
+    .dot-pill:nth-child(2) { animation-delay: 0.25s; }
+    .dot-pill:nth-child(3) { animation-delay: 0.5s; }
+    .dot-pill:nth-child(4) { animation-delay: 0.75s; }
+    .dot-pill:nth-child(5) { animation-delay: 1s; }
+    @keyframes dotEat { 0%,100% { opacity: 1; transform: scale(1); } 40% { opacity: 0.15; transform: scale(0.5); } }
+
+    /* ── SECTION STRUCTURE ── */
+    section { margin-bottom: 2.5rem; }
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-num {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      background: var(--accent-light);
+      border: 1px solid var(--accent-mid);
+      padding: 2px 8px;
+      border-radius: 20px;
+      flex-shrink: 0;
+    }
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+    .section-desc {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+      max-width: 700px;
+      line-height: 1.65;
+    }
+
+    /* ── PANEL (card wrapper) ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem 2.25rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ── GAME LOOP FLOW ── */
+    .loop-flow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .loop-node {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.75rem;
+      text-align: center;
+      min-width: 340px;
+      max-width: 520px;
+      width: 100%;
+      position: relative;
+      cursor: default;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+    .loop-node:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow-md), 0 0 0 3px var(--accent-light);
+      transform: translateY(-2px);
+    }
+    .loop-node.loop-terminal {
+      border-color: var(--green);
+      background: var(--green-light);
+    }
+    .loop-node.loop-terminal:hover {
+      box-shadow: var(--shadow-md), 0 0 0 3px #bbf7d0;
+    }
+    .node-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.2rem;
+    }
+    .loop-terminal .node-title { color: var(--green); }
+    .node-file {
+      font-size: 0.7rem;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    .node-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.55;
+    }
+    .loop-cycle-badge {
+      position: absolute; top: -11px; right: 14px;
+      background: var(--accent);
+      color: white;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+    .loop-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3px 0;
+      gap: 1px;
+    }
+    .arrow-line {
+      width: 1.5px;
+      height: 24px;
+      background: linear-gradient(to bottom, var(--border-mid), var(--accent));
+    }
+    .arrow-label {
+      font-size: 0.65rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      color: var(--text-muted);
+    }
+    .arrow-head {
+      width: 0; height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 10px solid var(--accent);
+    }
+
+    /* ── FILE CARDS ── */
+    .arch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+    .file-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.4rem;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+    .file-card:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow-md), 0 0 0 3px var(--accent-light);
+      transform: translateY(-2px);
+    }
+    .file-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+    .file-role {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 20px;
+      display: inline-block;
+      margin-bottom: 0.75rem;
+    }
+    .role-core   { background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-mid); }
+    .role-logic  { background: var(--purple-light); color: var(--purple); border: 1px solid #ddd6fe; }
+    .role-render { background: #fdf4ff; color: #a21caf; border: 1px solid #f0abfc; }
+    .role-data   { background: var(--amber-light); color: var(--amber); border: 1px solid #fde68a; }
+    .role-ui     { background: var(--green-light); color: var(--green); border: 1px solid #bbf7d0; }
+    .file-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .file-exports {
+      margin-top: 0.65rem;
+      font-size: 0.68rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+      padding-top: 0.55rem;
+    }
+    code {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.82em;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: var(--accent);
+    }
+
+    /* ── DATA FLOW ── */
+    .data-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0;
+      margin-bottom: 1.25rem;
+    }
+    .df-box {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem 1.2rem;
+      text-align: center;
+      min-width: 120px;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .df-box:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+    .df-box.df-green { border-color: #86efac; background: var(--green-light); }
+    .df-title { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); }
+    .df-box.df-green .df-title { color: var(--green); }
+    .df-sub { font-size: 0.62rem; color: var(--text-muted); margin-top: 2px; font-family: 'SF Mono', monospace; }
+    .df-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 6px;
+      gap: 1px;
+    }
+    .df-conn-label {
+      font-size: 0.6rem;
+      font-family: 'SF Mono', monospace;
+      color: var(--text-muted);
+    }
+    .df-conn-arrow { font-size: 1.1rem; color: var(--border-mid); line-height: 1; }
+
+    /* ── STATE MACHINE ── */
+    .state-machine {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+    .state-node {
+      border-radius: 50px;
+      padding: 0.5rem 1.25rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      border: 1.5px solid;
+    }
+    .state-node.s-info   { background: var(--accent-light); color: var(--accent); border-color: var(--accent-mid); }
+    .state-node.s-active { background: var(--green-light); color: var(--green); border-color: #86efac; }
+    .state-node.s-warn   { background: var(--amber-light); color: var(--amber); border-color: #fde68a; }
+    .state-node.s-danger { background: var(--red-light); color: var(--red); border-color: #fca5a5; }
+    .state-trans {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .trans-item {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.3rem 0.75rem;
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+    }
+    .trans-item .ts  { font-weight: 600; color: var(--accent); font-family: 'SF Mono', monospace; }
+    .trans-item .tk  { font-weight: 700; color: var(--text-primary); }
+    .trans-item .arr { color: var(--text-muted); }
+
+    /* ── GHOST CARDS ── */
+    .ghost-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .ghost-card {
+      border-radius: var(--radius);
+      padding: 1.25rem 1.4rem;
+      border: 1.5px solid;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+    .ghost-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+    .ghost-card.blinky { background: #fff5f5; border-color: #fca5a5; }
+    .ghost-card.pinky  { background: #fdf4ff; border-color: #f0abfc; }
+    .ghost-card.inky   { background: #eff6ff; border-color: var(--accent-mid); }
+    .ghost-card.clyde  { background: var(--amber-light); border-color: #fde68a; }
+    .ghost-icon { font-size: 2rem; margin-bottom: 0.5rem; display: block; line-height: 1; }
+    .ghost-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .blinky .ghost-name { color: var(--red); }
+    .pinky  .ghost-name { color: #a21caf; }
+    .inky   .ghost-name { color: var(--accent); }
+    .clyde  .ghost-name { color: var(--amber); }
+    .ghost-strategy { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.6; }
+    .ghost-speed {
+      margin-top: 0.65rem;
+      font-size: 0.68rem;
+      font-family: 'SF Mono', monospace;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+      padding-top: 0.5rem;
+    }
+    .frightened-box {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+    }
+    .frightened-box .fb-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.4rem;
+    }
+    .frightened-box p { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.65; }
+
+    /* ── MODE TIMELINE ── */
+    .mode-timeline {
+      display: flex;
+      align-items: stretch;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      height: 52px;
+      margin-bottom: 0.75rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .mode-seg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      gap: 2px;
+      padding: 0 4px;
+    }
+    .mode-seg.scatter { background: var(--accent-light); color: var(--accent); border-right: 1px solid var(--accent-mid); }
+    .mode-seg.chase   { background: #fff5f5; color: var(--red); border-right: 1px solid #fca5a5; }
+    .mode-seg:last-child { border-right: none; }
+    .mode-seg small { font-size: 0.58rem; font-weight: 400; color: var(--text-muted); }
+
+    /* ── CONSTANTS TABLE ── */
+    .table-wrap {
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    thead { background: var(--surface-alt); }
+    th {
+      text-align: left;
+      padding: 0.65rem 1.1rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 0.55rem 1.1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--accent-light); }
+    td .val { font-weight: 700; font-family: 'SF Mono', monospace; color: var(--text-primary); }
+    td .src { font-size: 0.7rem; font-family: 'SF Mono', monospace; color: var(--text-muted); }
+
+    /* ── CODE BLOCKS ── */
+    .code-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .code-label::before {
+      content: '';
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    pre {
+      background: #1e2330;
+      border: 1px solid var(--border);
+      border-radius: 0 0 var(--radius) var(--radius);
+      padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      font-size: 0.78rem;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+      line-height: 1.7;
+      color: #cdd6f4;
+      margin-bottom: 1.25rem;
+    }
+    pre:last-child { margin-bottom: 0; }
+    .kw  { color: #89b4fa; }
+    .fn  { color: #f9e2af; }
+    .str { color: #a6e3a1; }
+    .cmt { color: #585b70; font-style: italic; }
+    .typ { color: #cba6f7; }
+    .num { color: #fab387; }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      border-top: 1px solid var(--border);
+      margin-top: 1rem;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+    footer strong { color: var(--text-secondary); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 720px) {
+      .topbar-nav { display: none; }
+      .loop-node { min-width: 280px; }
+      .arch-grid, .ghost-grid { grid-template-columns: 1fr; }
+      .hero-meta { gap: 1.25rem; }
+      .panel { padding: 1.25rem 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topbar">
+  <div class="topbar-brand">CYBER-PAC · Docs</div>
+  <div class="topbar-nav">
+    <a href="#gameloop">Game Loop</a>
+    <a href="#arch">Architecture</a>
+    <a href="#dataflow">Data Flow</a>
+    <a href="#statemachine">State Machine</a>
+    <a href="#ghostai">Ghost AI</a>
+    <a href="#modecycle">Mode Cycle</a>
+    <a href="#constants">Constants</a>
+    <a href="#codepeek">Code Peek</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="hero-eyebrow">Technical Architecture Document</div>
+    <h1 class="hero-title">CYBER-<span>PAC</span></h1>
+    <p class="hero-sub">
+      A sci-fi Pac-Man game built with React 19, TypeScript, and HTML5 Canvas.
+      This document covers the game loop, module architecture, AI, and state management.
+    </p>
+    <div class="hero-meta">
+      <div class="hero-stat">
+        <span class="stat-val">8</span>
+        <span class="stat-label">Source Modules</span>
+      </div>
+      <div class="hero-stat">
+        <span class="stat-val">28×31</span>
+        <span class="stat-label">Tile Grid</span>
+      </div>
+      <div class="hero-stat">
+        <span class="stat-val">60 fps</span>
+        <span class="stat-label">Target Rate</span>
+      </div>
+      <div class="hero-stat">
+        <span class="stat-val">4</span>
+        <span class="stat-label">Ghost AIs</span>
+      </div>
+    </div>
+    <div class="hero-pac">
+      <div class="pac"></div>
+      <div class="dot-row">
+        <div class="dot-pill"></div>
+        <div class="dot-pill"></div>
+        <div class="dot-pill"></div>
+        <div class="dot-pill"></div>
+        <div class="dot-pill"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================================================================ -->
+  <!-- 01: GAME LOOP                                                     -->
+  <!-- ================================================================ -->
+  <section id="gameloop">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2>Game Loop</h2>
+    </div>
+    <p class="section-desc">
+      Every animation frame, the loop fires in <code>PacmanGame.tsx</code> via
+      <code>requestAnimationFrame</code>. Delta-time is capped at 50 ms to prevent
+      physics tunnelling on slow frames. All game state lives in refs — not React state —
+      to keep the closure hot without triggering re-renders.
+    </p>
+    <div class="panel">
+      <div class="loop-flow">
+
+        <div class="loop-node">
+          <div class="loop-cycle-badge">⟳ 60 fps</div>
+          <div class="node-title">requestAnimationFrame</div>
+          <div class="node-file">PacmanGame.tsx › loop(timestamp)</div>
+          <div class="node-desc">
+            Browser fires each display frame. Computes <code>dt = min(Δt, 50ms)</code>
+            to avoid big jumps on slow frames. Accumulates <code>globalTimer</code>
+            to throttle React HUD re-renders to ~100 ms intervals.
+          </div>
+        </div>
+
+        <div class="loop-arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-label">dt (ms), inputDir</div>
+          <div class="arrow-head"></div>
+        </div>
+
+        <div class="loop-node">
+          <div class="node-title">updateEngine()</div>
+          <div class="node-file">engine.ts — pure function, no side-effects</div>
+          <div class="node-desc">
+            Receives current <code>EngineState</code> + <code>dt</code> + player input.
+            Returns a <strong>new immutable state</strong> snapshot via object spread.
+            Execution order: mode cycle → player movement → dot eating → ghost updates → collision detection.
+          </div>
+        </div>
+
+        <div class="loop-arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-label">new EngineState</div>
+          <div class="arrow-head"></div>
+        </div>
+
+        <div class="loop-node">
+          <div class="node-title">updateGhost() × 4</div>
+          <div class="node-file">ghost.ts — called inside engine for each ghost</div>
+          <div class="node-desc">
+            Each ghost is updated independently. Handles exit timer countdown, global mode
+            sync (forces immediate reversal on transitions), frightened countdown,
+            pixel-step movement, intersection direction selection, tunnel teleport,
+            and eaten-ghost return to house.
+          </div>
+        </div>
+
+        <div class="loop-arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-label">updated ghosts[]</div>
+          <div class="arrow-head"></div>
+        </div>
+
+        <div class="loop-node">
+          <div class="node-title">Render Phase</div>
+          <div class="node-file">renderer.ts — all Canvas 2D drawing</div>
+          <div class="node-desc">
+            Clear canvas → starfield (menu only) → maze walls → particles →
+            score popups → ghosts (with eyes) → Pac-Man → overlay text
+            (MENU / PAUSED / GAME OVER / WIN).
+            React HUD (score, lives, level) re-renders as DOM overlays on top.
+          </div>
+        </div>
+
+        <div class="loop-arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-label">schedule next frame</div>
+          <div class="arrow-head"></div>
+        </div>
+
+        <div class="loop-node loop-terminal">
+          <div class="node-title">↩ requestAnimationFrame</div>
+          <div class="node-file">Loop continues until React component unmounts</div>
+          <div class="node-desc">
+            <code>cancelAnimationFrame</code> is called on React effect cleanup.
+            Using refs instead of state keeps the loop closure stable — no
+            stale-closure bugs, no unnecessary re-renders per tick.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <!-- 02: FILE ARCHITECTURE                                             -->
+  <!-- ================================================================ -->
+  <section id="arch">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2>File Architecture</h2>
+    </div>
+    <p class="section-desc">
+      The source is split into focused, single-responsibility modules.
+      <code>PacmanGame.tsx</code> is the only stateful component; everything else
+      is a pure function or data export.
+    </p>
+    <div class="arch-grid">
+
+      <div class="file-card">
+        <div class="file-name">PacmanGame.tsx</div>
+        <span class="file-role role-core">React Component</span>
+        <div class="file-desc">
+          Owns the <code>requestAnimationFrame</code> loop, canvas ref, keyboard
+          and touch input handlers, and the React HUD state. All game modules are
+          called as pure functions from here.
+        </div>
+        <div class="file-exports">▸ default export: PacmanGame</div>
+      </div>
+
+      <div class="file-card">
+        <div class="file-name">game/engine.ts</div>
+        <span class="file-role role-logic">Game Logic</span>
+        <div class="file-desc">
+          Pure update function: <code>updateEngine(state, dt, input) → EngineState</code>.
+          Handles player movement, dot eating, win/death detection, scoring, and
+          orchestrates ghost updates and collision.
+        </div>
+        <div class="file-exports">▸ createInitialState() · updateEngine() · EngineState</div>
+      </div>
+
+      <div class="file-card">
+        <div class="file-name">game/ghost.ts</div>
+        <span class="file-role role-logic">AI Logic</span>
+        <div class="file-desc">
+          Ghost creation, per-frame movement, target tile calculation per personality,
+          best-direction selection at intersections, and frightening / eating helpers.
+        </div>
+        <div class="file-exports">▸ createGhost · updateGhost · frightenGhost · eatGhost</div>
+      </div>
+
+      <div class="file-card">
+        <div class="file-name">game/renderer.ts</div>
+        <span class="file-role role-render">Canvas Renderer</span>
+        <div class="file-desc">
+          All Canvas 2D drawing: neon maze walls with glow, animated dots and power
+          pellets, Pac-Man mouth animation, ghost bodies with eyes, particle bursts,
+          floating score popups, starfield, and game-state overlays.
+        </div>
+        <div class="file-exports">▸ renderMaze · renderPacman · renderGhost · renderParticles · createParticles · …</div>
+      </div>
+
+      <div class="file-card">
+        <div class="file-name">game/maze.ts</div>
+        <span class="file-role role-data">Map Data</span>
+        <div class="file-desc">
+          28×31 hardcoded tile grid. Cell enum: <code>WALL</code>, <code>DOT</code>,
+          <code>POWER</code>, <code>EMPTY</code>, <code>GHOST_HOUSE</code>,
+          <code>GHOST_DOOR</code>, <code>TELEPORT</code>. Row 14 has side-tunnels;
+          ghost house occupies rows 13–15.
+        </div>
+        <div class="file-exports">▸ MAZE_DATA · CELL · TILE_SIZE=20 · MAZE_COLS=28 · MAZE_ROWS=31 · countDots()</div>
+      </div>
+
+      <div class="file-card">
+        <div class="file-name">game/types.ts</div>
+        <span class="file-role role-data">Types</span>
+        <div class="file-desc">
+          All TypeScript interfaces — <code>Vec2</code>, <code>Direction</code>,
+          <code>GhostMode</code>, <code>Ghost</code>, <code>Player</code>,
+          <code>GameData</code>, <code>GameState</code>. Zero runtime code.
+        </div>
+        <div class="file-exports">▸ Vec2 · Direction · GhostMode · Ghost · Player · GameData · GameState · DIR_VEC</div>
+      </div>
+
+      <div class="file-card">
+        <div class="file-name">game/constants.ts</div>
+        <span class="file-role role-data">Constants</span>
+        <div class="file-desc">
+          Movement speeds, score values, ghost scatter corner coordinates, home
+          pixel positions, frightened duration (8 s), mode cycle durations,
+          and the cyberpunk canvas color palette.
+        </div>
+        <div class="file-exports">▸ PACMAN_SPEED · GHOST_SPEED · GHOST_SCORES · COLORS · MODE_DURATIONS · …</div>
+      </div>
+
+      <div class="file-card">
+        <div class="file-name">App.tsx · main.tsx</div>
+        <span class="file-role role-ui">Entry Points</span>
+        <div class="file-desc">
+          <code>main.tsx</code> mounts the React root. <code>App.tsx</code> is a
+          thin wrapper around <code>PacmanGame</code>. No routing or global
+          providers — the game is the entire app.
+        </div>
+        <div class="file-exports">▸ Vite + React 19 + TypeScript strict mode</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <!-- 03: DATA FLOW                                                     -->
+  <!-- ================================================================ -->
+  <section id="dataflow">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2>Data Flow</h2>
+    </div>
+    <p class="section-desc">
+      State flows strictly one-way and downward. Game data lives in a
+      <code>useRef</code> (not <code>useState</code>) so mutations in the hot
+      animation loop never trigger React re-renders. Only the HUD values
+      (score, lives, level) are promoted to React state, updated at ~100 ms intervals.
+    </p>
+    <div class="panel">
+      <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.75rem">Hot path (canvas, ~60 fps)</p>
+      <div class="data-flow">
+        <div class="df-box"><div class="df-title">⌨️ Input</div><div class="df-sub">keydown / touchend</div></div>
+        <div class="df-connector"><div class="df-conn-label">inputDirRef</div><div class="df-conn-arrow">→</div></div>
+        <div class="df-box"><div class="df-title">🔁 RAF Loop</div><div class="df-sub">PacmanGame.tsx</div></div>
+        <div class="df-connector"><div class="df-conn-label">state + dt</div><div class="df-conn-arrow">→</div></div>
+        <div class="df-box"><div class="df-title">⚙️ Engine</div><div class="df-sub">engine.ts</div></div>
+        <div class="df-connector"><div class="df-conn-label">new state</div><div class="df-conn-arrow">→</div></div>
+        <div class="df-box"><div class="df-title">🖼 Renderer</div><div class="df-sub">renderer.ts</div></div>
+        <div class="df-connector"><div class="df-conn-label">canvas draw</div><div class="df-conn-arrow">→</div></div>
+        <div class="df-box"><div class="df-title">🖥 Canvas</div><div class="df-sub">560 × 620 px</div></div>
+      </div>
+
+      <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.75rem;margin-top:1.5rem">Cold path (React DOM HUD, ~100 ms)</p>
+      <div class="data-flow">
+        <div class="df-box df-green"><div class="df-title">💾 stateRef</div><div class="df-sub">EngineState (ref)</div></div>
+        <div class="df-connector"><div class="df-conn-label">score / lives</div><div class="df-conn-arrow">→</div></div>
+        <div class="df-box df-green"><div class="df-title">⚛️ uiState</div><div class="df-sub">React useState</div></div>
+        <div class="df-connector"><div class="df-conn-label">DOM overlay</div><div class="df-conn-arrow">→</div></div>
+        <div class="df-box df-green"><div class="df-title">🎮 HUD</div><div class="df-sub">Score / Lives / Level</div></div>
+        <div class="df-connector"><div class="df-conn-label">high score ⇄</div><div class="df-conn-arrow">⇄</div></div>
+        <div class="df-box df-green"><div class="df-title">🗄 localStorage</div><div class="df-sub">pacman-hs</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <!-- 04: STATE MACHINE                                                 -->
+  <!-- ================================================================ -->
+  <section id="statemachine">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2>Game State Machine</h2>
+    </div>
+    <p class="section-desc">
+      Six discrete <code>GameState</code> values control which logic and overlay
+      the loop executes each frame. Transitions are driven by keyboard input,
+      collision events, or win/lose conditions.
+    </p>
+    <div class="panel">
+      <div class="state-machine">
+        <div class="state-node s-info">MENU</div>
+        <div class="state-node s-active">PLAYING</div>
+        <div class="state-node s-warn">PAUSED</div>
+        <div class="state-node s-danger">DYING</div>
+        <div class="state-node s-danger">GAME_OVER</div>
+        <div class="state-node s-active">WIN</div>
+      </div>
+      <div class="state-trans">
+        <div class="trans-item"><span class="ts">MENU</span> <span class="arr">+</span> <span class="tk">SPACE/ENTER</span> <span class="arr">→</span> <span class="ts">PLAYING</span></div>
+        <div class="trans-item"><span class="ts">PLAYING</span> <span class="arr">+</span> <span class="tk">SPACE</span> <span class="arr">→</span> <span class="ts">PAUSED</span></div>
+        <div class="trans-item"><span class="ts">PAUSED</span> <span class="arr">+</span> <span class="tk">SPACE</span> <span class="arr">→</span> <span class="ts">PLAYING</span></div>
+        <div class="trans-item"><span class="ts">PLAYING</span> <span class="arr">+</span> <span class="tk">ESC</span> <span class="arr">→</span> <span class="ts">MENU</span></div>
+        <div class="trans-item"><span class="ts">PLAYING</span> <span class="arr">+</span> <span class="tk">ghost touch</span> <span class="arr">→</span> <span class="ts">DYING</span> (60 frames)</div>
+        <div class="trans-item"><span class="ts">DYING</span> <span class="arr">+</span> <span class="tk">lives &gt; 0</span> <span class="arr">→</span> <span class="ts">PLAYING</span> (reset positions)</div>
+        <div class="trans-item"><span class="ts">DYING</span> <span class="arr">+</span> <span class="tk">lives = 0</span> <span class="arr">→</span> <span class="ts">GAME_OVER</span></div>
+        <div class="trans-item"><span class="ts">PLAYING</span> <span class="arr">+</span> <span class="tk">all dots eaten</span> <span class="arr">→</span> <span class="ts">WIN</span></div>
+        <div class="trans-item"><span class="ts">GAME_OVER / WIN</span> <span class="arr">+</span> <span class="tk">SPACE</span> <span class="arr">→</span> <span class="ts">PLAYING</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <!-- 05: GHOST AI                                                      -->
+  <!-- ================================================================ -->
+  <section id="ghostai">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2>Ghost AI — Four Personalities</h2>
+    </div>
+    <p class="section-desc">
+      At every intersection, a ghost picks the direction that minimises Euclidean
+      distance to its current target tile. Reversing into the previously occupied tile
+      is forbidden (except on mode transitions). Each ghost exits the ghost house after
+      a staggered delay.
+    </p>
+    <div class="ghost-grid">
+
+      <div class="ghost-card blinky">
+        <span class="ghost-icon">👾</span>
+        <div class="ghost-name">BLINKY — Red</div>
+        <div class="ghost-strategy">
+          <strong>Chase:</strong> Targets Pac-Man's exact current tile. Direct pursuit,
+          no prediction — pure aggression. Fastest reaction to position changes.<br><br>
+          <strong>Scatter:</strong> Top-right corner (tile 25, 0).
+        </div>
+        <div class="ghost-speed">Speed: 2.0 px/frame · Exit delay: 0 ms (exits first)</div>
+      </div>
+
+      <div class="ghost-card pinky">
+        <span class="ghost-icon">🎀</span>
+        <div class="ghost-name">PINKY — Pink</div>
+        <div class="ghost-strategy">
+          <strong>Chase:</strong> Targets 4 tiles <em>ahead</em> of Pac-Man's current
+          direction — attempts to cut off escape routes and set up pincer attacks
+          with Blinky.<br><br>
+          <strong>Scatter:</strong> Top-left corner (tile 2, 0).
+        </div>
+        <div class="ghost-speed">Speed: 2.0 px/frame · Exit delay: 2 000 ms</div>
+      </div>
+
+      <div class="ghost-card inky">
+        <span class="ghost-icon">💠</span>
+        <div class="ghost-name">INKY — Cyan</div>
+        <div class="ghost-strategy">
+          <strong>Chase:</strong> Complex pivot — takes 2 tiles ahead of Pac-Man,
+          draws a vector from Blinky to that point, then doubles it. Makes Inky
+          highly unpredictable and dependent on Blinky's position.<br><br>
+          <strong>Scatter:</strong> Bottom-right corner (tile 27, 30).
+        </div>
+        <div class="ghost-speed">Speed: 2.0 px/frame · Exit delay: 5 000 ms</div>
+      </div>
+
+      <div class="ghost-card clyde">
+        <span class="ghost-icon">🟠</span>
+        <div class="ghost-name">CLYDE — Orange</div>
+        <div class="ghost-strategy">
+          <strong>Chase:</strong> Chases Pac-Man directly when distance² &gt; 64.
+          Switches to his own scatter corner when closer than 8 tiles — appearing
+          to wander away aimlessly when near.<br><br>
+          <strong>Scatter:</strong> Bottom-left corner (tile 0, 30).
+        </div>
+        <div class="ghost-speed">Speed: 2.0 px/frame · Exit delay: 8 000 ms (exits last)</div>
+      </div>
+
+    </div>
+
+    <div class="frightened-box">
+      <div class="fb-title">Frightened &amp; Eaten Modes</div>
+      <p>
+        Power pellet → all ghosts enter <strong>FRIGHTENED</strong> (8 s, speed 1.2 px/frame,
+        random direction at intersections, reverse immediately on activation).
+        Colliding with a frightened ghost → <strong>EATEN</strong> (speed 4.0 px/frame, eyes only,
+        targets own home pixel to respawn). Ghost scores multiply per chain: 200 → 400 → 800 → 1 600.
+        Frightened ghosts flash as a warning during the final 2 seconds.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <!-- 06: MODE CYCLE                                                    -->
+  <!-- ================================================================ -->
+  <section id="modecycle">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <h2>Global Mode Cycle</h2>
+    </div>
+    <p class="section-desc">
+      A single global timer drives alternating SCATTER / CHASE phases for all ghosts.
+      Mode transitions immediately force all non-frightened, non-eaten ghosts to reverse direction.
+    </p>
+    <div class="panel">
+      <div class="mode-timeline">
+        <div class="mode-seg scatter" style="flex:7">SCATTER<br><small>7 s</small></div>
+        <div class="mode-seg chase"   style="flex:20">CHASE<br><small>20 s</small></div>
+        <div class="mode-seg scatter" style="flex:7">SCATTER<br><small>7 s</small></div>
+        <div class="mode-seg chase"   style="flex:20">CHASE<br><small>20 s</small></div>
+        <div class="mode-seg scatter" style="flex:5">SCATTER<br><small>5 s</small></div>
+        <div class="mode-seg chase"   style="flex:20">CHASE<br><small>20 s</small></div>
+        <div class="mode-seg scatter" style="flex:5">SCATTER<br><small>5 s</small></div>
+        <div class="mode-seg chase"   style="flex:20">CHASE<br><small>∞</small></div>
+      </div>
+      <p style="font-size:0.75rem;color:var(--text-muted);font-family:'SF Mono',monospace">
+        constants.ts → <code>MODE_DURATIONS = [7000, 20000, 7000, 20000, 5000, 20000, 5000, Infinity]</code>
+      </p>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <!-- 07: CONSTANTS                                                     -->
+  <!-- ================================================================ -->
+  <section id="constants">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <h2>Key Constants</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Constant</th><th>Value</th><th>Source &amp; Note</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>TILE_SIZE</td>              <td><span class="val">20 px</span></td>               <td><span class="src">maze.ts — 28 cols × 31 rows = 560 × 620 px canvas</span></td></tr>
+          <tr><td>PACMAN_SPEED</td>           <td><span class="val">2.5 px/frame</span></td>        <td><span class="src">constants.ts — applied each RAF tick</span></td></tr>
+          <tr><td>GHOST_SPEED</td>            <td><span class="val">2.0 px/frame</span></td>        <td><span class="src">constants.ts — normal SCATTER / CHASE mode</span></td></tr>
+          <tr><td>GHOST_FRIGHTENED_SPEED</td> <td><span class="val">1.2 px/frame</span></td>        <td><span class="src">constants.ts — sluggish when edible</span></td></tr>
+          <tr><td>GHOST_EATEN_SPEED</td>      <td><span class="val">4.0 px/frame</span></td>        <td><span class="src">constants.ts — sprints home as eyes only</span></td></tr>
+          <tr><td>FRIGHTENED_DURATION</td>    <td><span class="val">8 000 ms</span></td>            <td><span class="src">constants.ts — power pellet effect window</span></td></tr>
+          <tr><td>DOT_SCORE</td>              <td><span class="val">10 pts</span></td>              <td><span class="src">constants.ts</span></td></tr>
+          <tr><td>POWER_SCORE</td>            <td><span class="val">50 pts</span></td>              <td><span class="src">constants.ts</span></td></tr>
+          <tr><td>GHOST_SCORES</td>           <td><span class="val">200, 400, 800, 1 600</span></td><td><span class="src">constants.ts — multiplying chain kills</span></td></tr>
+          <tr><td>Collision threshold</td>    <td><span class="val">0.7 × TILE_SIZE</span></td>    <td><span class="src">engine.ts — AABB check per ghost vs player</span></td></tr>
+          <tr><td>Death anim frames</td>      <td><span class="val">60 frames</span></td>           <td><span class="src">engine.ts — dyingFrame countdown</span></td></tr>
+          <tr><td>dt cap</td>                 <td><span class="val">50 ms</span></td>               <td><span class="src">PacmanGame.tsx — prevents tunnelling on slow frames</span></td></tr>
+          <tr><td>Stars (menu bg)</td>        <td><span class="val">80</span></td>                  <td><span class="src">PacmanGame.tsx — createStars(80, W, H)</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <!-- 08: CODE PEEK                                                     -->
+  <!-- ================================================================ -->
+  <section id="codepeek">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <h2>Code Peek — Key Snippets</h2>
+    </div>
+    <p class="section-desc">
+      Three patterns that define how the codebase works: the RAF loop, the ghost
+      targeting switch, and the immutable state spread.
+    </p>
+
+    <div class="code-label">RAF Loop · PacmanGame.tsx</div>
+    <pre><span class="kw">const</span> <span class="fn">loop</span> = (timestamp: <span class="typ">number</span>) =&gt; {
+  <span class="kw">const</span> dt = Math.min(timestamp - lastTimeRef.current, <span class="num">50</span>); <span class="cmt">// cap at 50ms</span>
+  lastTimeRef.current = timestamp;
+
+  <span class="fn">updatePowerPulse</span>(dt); <span class="cmt">// animate pellet glow globally</span>
+
+  <span class="kw">if</span> (gameData.state === <span class="str">'PLAYING'</span>) {
+    <span class="kw">const</span> newState = <span class="fn">updateEngine</span>(state, dt, inputDirRef.current);
+    stateRef.current = newState;
+    <span class="fn">setUiState</span>({ score, highScore, lives, level, gameState });
+  }
+
+  ctx.fillStyle = <span class="str">'#000010'</span>;
+  ctx.fillRect(<span class="num">0</span>, <span class="num">0</span>, CANVAS_W, CANVAS_H);
+  <span class="fn">renderMaze</span>(ctx, s.gameData.maze);
+  <span class="fn">renderParticles</span>(ctx, updatedParticles);
+  <span class="fn">renderGhost</span>(ctx, ghost, globalTimer);
+  <span class="fn">renderPacman</span>(ctx, s.player, s.dyingFrame);
+
+  animFrameRef.current = <span class="fn">requestAnimationFrame</span>(loop);
+};</pre>
+
+    <div class="code-label">Ghost Target Selection · ghost.ts</div>
+    <pre><span class="kw">function</span> <span class="fn">getTarget</span>(ghost, player, allGhosts, maze): <span class="typ">Vec2</span> {
+  <span class="kw">if</span> (ghost.mode === <span class="str">'EATEN'</span>)      <span class="kw">return</span> GHOST_HOME_PIXEL[ghost.name];
+  <span class="kw">if</span> (ghost.mode === <span class="str">'FRIGHTENED'</span>) <span class="kw">return</span> { x: Math.random() * MAZE_COLS, y: ... };
+  <span class="kw">if</span> (ghost.mode === <span class="str">'SCATTER'</span>)    <span class="kw">return</span> tileToPixel(ghost.scatterTarget);
+
+  <span class="cmt">// CHASE — personality routing</span>
+  <span class="kw">switch</span> (ghost.name) {
+    <span class="kw">case</span> <span class="str">'BLINKY'</span>: <span class="kw">return</span> tileToPixel(player.tilePos);
+    <span class="kw">case</span> <span class="str">'PINKY'</span>:  <span class="kw">return</span> tileToPixel({ x: px + dv.x * <span class="num">4</span>, y: py + dv.y * <span class="num">4</span> });
+    <span class="kw">case</span> <span class="str">'INKY'</span>: {
+      <span class="kw">const</span> ahead = { x: px + dv.x * <span class="num">2</span>, y: py + dv.y * <span class="num">2</span> };
+      <span class="kw">return</span> tileToPixel({           <span class="cmt">// mirror Blinky across "ahead" point</span>
+        x: ahead.x + (ahead.x - bt.x),
+        y: ahead.y + (ahead.y - bt.y),
+      });
+    }
+    <span class="kw">case</span> <span class="str">'CLYDE'</span>:
+      <span class="kw">return</span> dist2(ghost.tilePos, player.tilePos) &gt; <span class="num">64</span>
+        ? tileToPixel(player.tilePos)        <span class="cmt">// far: chase</span>
+        : tileToPixel(ghost.scatterTarget);  <span class="cmt">// close: flee to corner</span>
+  }
+}</pre>
+
+    <div class="code-label">Immutable State Pattern · engine.ts</div>
+    <pre><span class="cmt">// Engine never mutates — always returns a brand-new object</span>
+<span class="kw">return</span> {
+  ...state,               <span class="cmt">// spread previous snapshot</span>
+  player,                 <span class="cmt">// new player object</span>
+  ghosts: collidedGhosts,
+  particles,
+  scorePopups: updatedPopups,
+  gameData: {
+    ...gameData,          <span class="cmt">// spread previous gameData</span>
+    score, highScore, lives, dotsEaten, maze,
+    frightenedMultiplier, modeTimer, modePhase,
+  },
+};</pre>
+
+  </section>
+
+  <footer>
+    <strong>CYBER-PAC</strong> · React 19 + TypeScript + Vite · HTML5 Canvas 2D · 560×620 px · 28×31 tiles<br>
+    Architecture document generated by Claude Code · 2026
+  </footer>
+
+</div>
+
+<script>
+  // Smooth scroll for nav links
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  // Highlight active nav item on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('.topbar-nav a');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(a => {
+          a.style.background = '';
+          a.style.color = '';
+        });
+        const active = document.querySelector(`.topbar-nav a[href="#${entry.target.id}"]`);
+        if (active) {
+          active.style.background = 'var(--accent-light)';
+          active.style.color = 'var(--accent)';
+        }
+      }
+    });
+  }, { rootMargin: '-30% 0px -60% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
