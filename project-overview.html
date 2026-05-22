@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CYBER-PAC — Project Overview</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap');
+
+    :root {
+      --cyan:    #00d4ff;
+      --blue:    #0066ff;
+      --yellow:  #ffee00;
+      --orange:  #ff9900;
+      --green:   #00ffcc;
+      --red:     #ff3366;
+      --pink:    #ff69b4;
+      --bg:      #000010;
+      --bg2:     #000820;
+      --bg3:     #050520;
+      --wall:    #0a0a3a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: #cce8ff;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 17px;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated grid background ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,100,255,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,100,255,.06) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Scanline overlay ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,.15) 2px,
+        rgba(0,0,0,.15) 4px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 60px 24px 100px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 60px 0 50px;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 4px;
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+      padding: 4px 16px;
+      margin-bottom: 24px;
+      text-transform: uppercase;
+      opacity: .8;
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(2.8rem, 8vw, 5.5rem);
+      font-weight: 900;
+      letter-spacing: .05em;
+      line-height: 1;
+      background: linear-gradient(135deg, var(--yellow) 0%, var(--orange) 40%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: none;
+      filter: drop-shadow(0 0 30px rgba(0,212,255,.4));
+      margin-bottom: 16px;
+    }
+
+    .hero-sub {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1rem;
+      color: var(--cyan);
+      opacity: .7;
+      letter-spacing: 2px;
+      margin-bottom: 32px;
+    }
+
+    .hero-description {
+      max-width: 620px;
+      margin: 0 auto;
+      font-size: 1.15rem;
+      color: #9ac8e8;
+      font-weight: 300;
+    }
+
+    /* ── Pac-Man pixel art (CSS only) ── */
+    .pacman-art {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin: 36px 0;
+      align-items: center;
+    }
+
+    .pac {
+      width: 48px;
+      height: 48px;
+      background: var(--yellow);
+      border-radius: 50%;
+      clip-path: polygon(100% 50%, 60% 20%, 0 0, 0 100%, 60% 80%);
+      box-shadow: 0 0 20px var(--yellow), 0 0 40px var(--orange);
+      animation: chomp 0.4s infinite alternate;
+    }
+
+    @keyframes chomp {
+      from { clip-path: polygon(100% 50%, 60% 20%, 0 0, 0 100%, 60% 80%); }
+      to   { clip-path: polygon(100% 50%, 55% 35%, 10% 10%, 10% 90%, 55% 65%); }
+    }
+
+    .ghost-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      animation: pulse 1s infinite alternate;
+    }
+    .ghost-dot:nth-child(2)  { background: var(--cyan);  box-shadow: 0 0 10px var(--cyan); animation-delay: 0s; }
+    .ghost-dot:nth-child(3)  { background: var(--pink);  box-shadow: 0 0 10px var(--pink); animation-delay: .2s; }
+    .ghost-dot:nth-child(4)  { background: var(--red);   box-shadow: 0 0 10px var(--red);  animation-delay: .4s; }
+    .ghost-dot:nth-child(5)  { background: var(--orange);box-shadow: 0 0 10px var(--orange);animation-delay: .6s; }
+
+    @keyframes pulse { from { opacity: .4; transform: scale(.8); } to { opacity: 1; transform: scale(1.1); } }
+
+    /* ── Section ── */
+    section { margin-bottom: 60px; }
+
+    .section-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 4px;
+      color: var(--cyan);
+      opacity: .6;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--cyan);
+      text-shadow: 0 0 20px rgba(0,212,255,.5);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    h2::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(0,212,255,.4), transparent);
+    }
+
+    /* ── What is this ── */
+    .intro-box {
+      background: linear-gradient(135deg, rgba(0,8,32,.9), rgba(5,5,32,.9));
+      border: 1px solid rgba(0,212,255,.25);
+      border-left: 3px solid var(--cyan);
+      border-radius: 4px 12px 12px 4px;
+      padding: 28px 32px;
+      font-size: 1.1rem;
+      color: #b8daf0;
+    }
+
+    .intro-box strong { color: var(--yellow); }
+
+    /* ── Stack cards ── */
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid rgba(0,212,255,.15);
+      border-radius: 12px;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .3s, transform .2s;
+    }
+
+    .card:hover {
+      border-color: rgba(0,212,255,.5);
+      transform: translateY(-3px);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--card-color, var(--cyan));
+      box-shadow: 0 0 12px var(--card-color, var(--cyan));
+    }
+
+    .card-icon {
+      font-size: 2.2rem;
+      margin-bottom: 12px;
+      filter: drop-shadow(0 0 8px rgba(255,255,255,.3));
+    }
+
+    .card-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: .85rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      color: var(--card-color, var(--cyan));
+      margin-bottom: 6px;
+    }
+
+    .card-name {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #e8f4ff;
+      margin-bottom: 10px;
+    }
+
+    .card p {
+      font-size: .95rem;
+      color: #7aa0be;
+      line-height: 1.6;
+    }
+
+    .card .tag {
+      display: inline-block;
+      margin-top: 12px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      padding: 2px 10px;
+      border: 1px solid var(--card-color, var(--cyan));
+      color: var(--card-color, var(--cyan));
+      border-radius: 20px;
+      opacity: .7;
+    }
+
+    /* ── Architecture flow ── */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      padding: 20px 0;
+      border-left: 2px solid rgba(0,212,255,.2);
+      padding-left: 28px;
+      position: relative;
+    }
+
+    .flow-step::before {
+      content: '';
+      position: absolute;
+      left: -7px;
+      top: 26px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--step-color, var(--cyan));
+      box-shadow: 0 0 12px var(--step-color, var(--cyan));
+    }
+
+    .flow-step:last-child {
+      border-left-color: transparent;
+    }
+
+    .flow-num {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .75rem;
+      color: var(--step-color, var(--cyan));
+      opacity: .6;
+      min-width: 28px;
+      padding-top: 4px;
+    }
+
+    .flow-content h3 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: .9rem;
+      color: var(--step-color, var(--cyan));
+      margin-bottom: 4px;
+    }
+
+    .flow-content p {
+      color: #7aa0be;
+      font-size: .95rem;
+    }
+
+    .flow-content strong { color: #cce8ff; }
+
+    /* ── Ghosts section ── */
+    .ghosts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 16px;
+    }
+
+    .ghost-card {
+      background: var(--bg2);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      transition: transform .2s;
+    }
+
+    .ghost-card:hover { transform: translateY(-3px); }
+
+    .ghost-emoji {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+    }
+
+    .ghost-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: .8rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .ghost-card p {
+      font-size: .88rem;
+      color: #6a90ae;
+      line-height: 1.5;
+    }
+
+    /* ── Stats ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-box {
+      background: var(--bg2);
+      border: 1px solid rgba(0,212,255,.15);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--yellow);
+      text-shadow: 0 0 16px var(--orange);
+      display: block;
+    }
+
+    .stat-label {
+      font-size: .8rem;
+      color: #5a80a0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+
+    /* ── File tree ── */
+    .file-tree {
+      background: var(--bg3);
+      border: 1px solid rgba(0,212,255,.12);
+      border-radius: 12px;
+      padding: 24px 28px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .88rem;
+      line-height: 2;
+    }
+
+    .file-tree .dir  { color: var(--cyan); }
+    .file-tree .file { color: #7aa0be; }
+    .file-tree .note { color: #3a6080; font-size: .78rem; }
+    .file-tree .indent1 { padding-left: 20px; }
+    .file-tree .indent2 { padding-left: 40px; }
+
+    /* ── How to run ── */
+    .run-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .run-step {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--bg2);
+      border: 1px solid rgba(0,212,255,.12);
+      border-radius: 10px;
+      padding: 16px 20px;
+    }
+
+    .run-num {
+      font-family: 'Orbitron', sans-serif;
+      font-size: .7rem;
+      font-weight: 700;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(0,212,255,.1);
+      border: 1px solid rgba(0,212,255,.3);
+      color: var(--cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .run-text strong {
+      display: block;
+      color: #d0ecff;
+      font-size: 1rem;
+    }
+
+    .run-text span {
+      color: #5a80a0;
+      font-size: .88rem;
+    }
+
+    .run-text code {
+      font-family: 'Share Tech Mono', monospace;
+      background: rgba(0,212,255,.08);
+      border: 1px solid rgba(0,212,255,.2);
+      color: var(--cyan);
+      padding: 1px 8px;
+      border-radius: 4px;
+      font-size: .85rem;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 40px 0 20px;
+      border-top: 1px solid rgba(0,212,255,.1);
+      color: #2a5070;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .82rem;
+      letter-spacing: 2px;
+    }
+
+    footer span { color: var(--yellow); }
+
+    /* ── Glow divider ── */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0,212,255,.3), transparent);
+      margin: 48px 0;
+    }
+
+    /* ── Highlight box ── */
+    .highlight {
+      background: rgba(255,238,0,.04);
+      border: 1px solid rgba(255,238,0,.2);
+      border-radius: 10px;
+      padding: 20px 24px;
+      color: #c0b060;
+      font-size: .95rem;
+    }
+
+    .highlight::before {
+      content: '⚡ ';
+      color: var(--yellow);
+    }
+  </style>
+</head>
+<body>
+<main>
+
+  <!-- ── HERO ── -->
+  <div class="hero">
+    <div class="hero-badge">Project Overview · Non-Technical Edition</div>
+    <h1>CYBER-PAC</h1>
+    <p class="hero-sub">// sci-fi arcade · browser-native · zero installs to play</p>
+
+    <div class="pacman-art">
+      <div class="ghost-dot"></div>
+      <div class="ghost-dot"></div>
+      <div class="ghost-dot"></div>
+      <div class="ghost-dot"></div>
+      <div class="pac"></div>
+    </div>
+
+    <p class="hero-description">
+      A fully reimagined Pac-Man experience wrapped in a neon-drenched cyberpunk skin —
+      built from scratch using modern web technology and running entirely inside your browser.
+    </p>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── WHAT IS THIS ── -->
+  <section>
+    <div class="section-label">// 01 · What is this?</div>
+    <h2>The Big Picture</h2>
+    <div class="intro-box">
+      <p>
+        <strong>CYBER-PAC</strong> is a video game that lives entirely on a web page —
+        no download, no installation, no app store. You open it in a browser and play instantly.
+      </p>
+      <br>
+      <p>
+        It recreates the classic <strong>Pac-Man</strong> arcade experience with a futuristic
+        cyberpunk visual style: glowing neon walls, electric particle effects, and four AI-driven
+        ghost enemies that each think differently about how to hunt you.
+      </p>
+      <br>
+      <p>
+        The game saves your <strong>high score</strong> locally on your device so it persists
+        across visits, and it supports both keyboard and touchscreen controls.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── GAME NUMBERS ── -->
+  <section>
+    <div class="section-label">// 02 · By the numbers</div>
+    <h2>Game Specs</h2>
+    <div class="stats-row">
+      <div class="stat-box">
+        <span class="stat-value">28×31</span>
+        <div class="stat-label">Maze grid</div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-value">4</span>
+        <div class="stat-label">Ghost AIs</div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-value">60 fps</span>
+        <div class="stat-label">Render rate</div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-value">560px</span>
+        <div class="stat-label">Canvas width</div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-value">1600</span>
+        <div class="stat-label">Max ghost pts</div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-value">8 sec</span>
+        <div class="stat-label">Power-up time</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── TECH STACK ── -->
+  <section>
+    <div class="section-label">// 03 · The Technology Stack</div>
+    <h2>What It's Built With</h2>
+    <p style="color:#6a90ae; margin-bottom:28px; font-size:.95rem;">
+      Think of the stack as the layers of a building. Each technology has a specific role,
+      and they all work together to make the game possible.
+    </p>
+
+    <div class="stack-grid">
+
+      <div class="card" style="--card-color: #61dafb">
+        <div class="card-icon">⚛️</div>
+        <div class="card-title">UI Framework</div>
+        <div class="card-name">React 19</div>
+        <p>The engine that manages what you see on screen — the score counter, lives display,
+        and game-over messages. React re-draws only the parts that change, making the
+        interface fast and smooth.</p>
+        <span class="tag">facebook / meta</span>
+      </div>
+
+      <div class="card" style="--card-color: #3178c6">
+        <div class="card-icon">🔷</div>
+        <div class="card-title">Language</div>
+        <div class="card-name">TypeScript</div>
+        <p>A supercharged version of JavaScript (the language all browsers understand natively).
+        TypeScript adds a safety net that catches coding mistakes <em>before</em> the game
+        even runs — like spell-check, but for logic.</p>
+        <span class="tag">microsoft</span>
+      </div>
+
+      <div class="card" style="--card-color: #b57bee">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Build Tool</div>
+        <div class="card-name">Vite</div>
+        <p>The workshop where the game is assembled. Vite takes all the code files and
+        packages them into a single optimised bundle the browser can load instantly.
+        During development it also refreshes the page in milliseconds after every change.</p>
+        <span class="tag">evan you</span>
+      </div>
+
+      <div class="card" style="--card-color: #f7c948">
+        <div class="card-icon">🎨</div>
+        <div class="card-title">Rendering</div>
+        <div class="card-name">HTML5 Canvas</div>
+        <p>The actual "screen" the game draws on — a blank rectangle inside the web page
+        that code can paint pixel by pixel, 60 times per second. Every wall, dot,
+        ghost, and particle effect is drawn here by the renderer.</p>
+        <span class="tag">web standard</span>
+      </div>
+
+      <div class="card" style="--card-color: #00ffcc">
+        <div class="card-icon">🎮</div>
+        <div class="card-title">Game Loop</div>
+        <div class="card-name">requestAnimationFrame</div>
+        <p>A browser built-in timer that ticks in sync with your monitor's refresh rate.
+        It's the heartbeat of the game — every tick, positions are updated and the canvas
+        is redrawn. No external game engine is needed.</p>
+        <span class="tag">web api</span>
+      </div>
+
+      <div class="card" style="--card-color: #ff6b6b">
+        <div class="card-icon">💾</div>
+        <div class="card-title">Persistence</div>
+        <div class="card-name">localStorage</div>
+        <p>A tiny built-in storage area every browser provides for websites. CYBER-PAC uses
+        it to remember your high score across sessions — no server, no account,
+        no internet connection required.</p>
+        <span class="tag">web api</span>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── ARCHITECTURE ── -->
+  <section>
+    <div class="section-label">// 04 · How it works — one frame at a time</div>
+    <h2>Inside the Game Loop</h2>
+    <p style="color:#6a90ae; margin-bottom:28px; font-size:.95rem;">
+      The game runs 60 times every second. Here's what happens in each of those tiny moments:
+    </p>
+
+    <div class="flow">
+
+      <div class="flow-step" style="--step-color: #ffee00">
+        <span class="flow-num">01</span>
+        <div class="flow-content">
+          <h3>Read Input</h3>
+          <p><strong>PacmanGame</strong> checks whether you're pressing a key or swiping on touch.
+          Your intent is stored and applied on the next opportunity to turn without hitting a wall.</p>
+        </div>
+      </div>
+
+      <div class="flow-step" style="--step-color: #00d4ff">
+        <span class="flow-num">02</span>
+        <div class="flow-content">
+          <h3>Update State (Engine)</h3>
+          <p>The <strong>engine.ts</strong> file is the pure logic brain. It moves Pac-Man,
+          checks for dot collisions, triggers power-pellet mode, advances ghost timers,
+          and decides whether you've won or lost — all as pure math, no drawing.</p>
+        </div>
+      </div>
+
+      <div class="flow-step" style="--step-color: #ff69b4">
+        <span class="flow-num">03</span>
+        <div class="flow-content">
+          <h3>Ghost AI Decisions (Ghost)</h3>
+          <p><strong>ghost.ts</strong> calculates where each ghost wants to go at every
+          intersection. Each of the four ghosts uses a different targeting strategy
+          (see below) to create varied, intelligent pursuit behaviour.</p>
+        </div>
+      </div>
+
+      <div class="flow-step" style="--step-color: #00ffcc">
+        <span class="flow-num">04</span>
+        <div class="flow-content">
+          <h3>Draw Everything (Renderer)</h3>
+          <p><strong>renderer.ts</strong> takes the updated state and paints the canvas:
+          neon walls with glow effects, dots, Pac-Man's chomping animation, ghost bodies,
+          and particle effects on collisions. Then React overlays the HUD on top.</p>
+        </div>
+      </div>
+
+      <div class="flow-step" style="--step-color: #b57bee">
+        <span class="flow-num">05</span>
+        <div class="flow-content">
+          <h3>Schedule Next Frame</h3>
+          <p>The loop schedules itself to run again at the next monitor refresh via
+          <strong>requestAnimationFrame</strong>. This repeats indefinitely until
+          you close the tab or lose all your lives.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── GHOST AI ── -->
+  <section>
+    <div class="section-label">// 05 · Ghost Intelligence</div>
+    <h2>The Four Adversaries</h2>
+    <p style="color:#6a90ae; margin-bottom:28px; font-size:.95rem;">
+      Each ghost has a distinct personality implemented as a targeting algorithm.
+      Together they create coordinated (but not scripted) pressure on the player.
+    </p>
+
+    <div class="ghosts-grid">
+
+      <div class="ghost-card">
+        <div class="ghost-emoji">👻</div>
+        <div class="ghost-name" style="color: #ff3333">BLINKY · RED</div>
+        <p>The direct pursuer. Always targets your exact current position.
+        Gets faster as dots are eaten. The most dangerous in the late game.</p>
+      </div>
+
+      <div class="ghost-card">
+        <div class="ghost-emoji">👻</div>
+        <div class="ghost-name" style="color: #ff99cc">PINKY · PINK</div>
+        <p>The ambusher. Targets 4 tiles <em>ahead</em> of where you're facing —
+        tries to cut you off before you arrive.</p>
+      </div>
+
+      <div class="ghost-card">
+        <div class="ghost-emoji">👻</div>
+        <div class="ghost-name" style="color: #00d4ff">INKY · CYAN</div>
+        <p>The flanker. Uses a combination of Blinky's position and yours
+        to calculate a flanking point — unpredictable until you understand the math.</p>
+      </div>
+
+      <div class="ghost-card">
+        <div class="ghost-emoji">👻</div>
+        <div class="ghost-name" style="color: #ff9900">CLYDE · ORANGE</div>
+        <p>The shy one. Chases you when far away but retreats to his corner
+        when within 8 tiles. Deceptively disruptive.</p>
+      </div>
+
+    </div>
+
+    <br>
+    <div class="highlight">
+      Ghosts cycle through global modes: <strong>Scatter</strong> (retreat to corners)
+      → <strong>Chase</strong> (hunt) → Scatter → Chase, following a fixed timer sequence.
+      Eating a power pellet temporarily flips them to <strong>Frightened</strong> mode —
+      they turn blue and you can eat them for bonus points (200 → 400 → 800 → 1600).
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── FILE STRUCTURE ── -->
+  <section>
+    <div class="section-label">// 06 · Project files</div>
+    <h2>Codebase Structure</h2>
+    <p style="color:#6a90ae; margin-bottom:20px; font-size:.95rem;">
+      Every file has exactly one responsibility. Here's a plain-English map:
+    </p>
+
+    <div class="file-tree">
+      <div class="dir">📁 src/</div>
+      <div class="indent1">
+        <div class="dir">📁 game/ <span class="note">← pure game logic, no visuals</span></div>
+        <div class="indent1">
+          <div><span class="file">📄 types.ts</span> <span class="note">— data blueprints (what a Ghost looks like in code)</span></div>
+          <div><span class="file">📄 constants.ts</span> <span class="note">— all tunable numbers (speeds, scores, colours)</span></div>
+          <div><span class="file">📄 maze.ts</span> <span class="note">— the 28×31 grid: walls, dots, teleports</span></div>
+          <div><span class="file">📄 engine.ts</span> <span class="note">— moves everything, checks collisions, tracks score</span></div>
+          <div><span class="file">📄 ghost.ts</span> <span class="note">— ghost AI targeting &amp; mode transitions</span></div>
+          <div><span class="file">📄 renderer.ts</span> <span class="note">— draws all game graphics onto the canvas</span></div>
+        </div>
+        <div><span class="file">📄 PacmanGame.tsx</span> <span class="note">— game loop, keyboard/touch input, HUD layout</span></div>
+        <div><span class="file">📄 App.tsx</span> <span class="note">— root wrapper that loads the game</span></div>
+        <div><span class="file">📄 main.tsx</span> <span class="note">— entry point, mounts React into the HTML page</span></div>
+      </div>
+      <div class="dir" style="margin-top:8px">📁 public/ <span class="note file">← icons &amp; static assets</span></div>
+      <div><span class="file">📄 index.html</span> <span class="note">— the single HTML page the browser loads</span></div>
+      <div><span class="file">📄 vite.config.ts</span> <span class="note">— build tool configuration</span></div>
+      <div><span class="file">📄 package.json</span> <span class="note">— project manifest &amp; dependency list</span></div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── HOW TO RUN ── -->
+  <section>
+    <div class="section-label">// 07 · Running the game</div>
+    <h2>For Developers: Getting Started</h2>
+
+    <div class="run-steps">
+      <div class="run-step">
+        <div class="run-num">1</div>
+        <div class="run-text">
+          <strong>Install Node.js</strong>
+          <span>A JavaScript runtime required to build and serve the project locally — download from nodejs.org</span>
+        </div>
+      </div>
+      <div class="run-step">
+        <div class="run-num">2</div>
+        <div class="run-text">
+          <strong>Install dependencies</strong>
+          <span>In the project folder run <code>npm install</code> — downloads all required libraries (~30 MB)</span>
+        </div>
+      </div>
+      <div class="run-step">
+        <div class="run-num">3</div>
+        <div class="run-text">
+          <strong>Start the dev server</strong>
+          <span>Run <code>npm run dev</code> — then open <code>http://localhost:5173</code> in your browser</span>
+        </div>
+      </div>
+      <div class="run-step">
+        <div class="run-num">4</div>
+        <div class="run-text">
+          <strong>Production build</strong>
+          <span>Run <code>npm run build</code> — outputs a self-contained <code>dist/</code> folder ready to deploy anywhere</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── FOOTER ── -->
+  <footer>
+    <p>CYBER-PAC &nbsp;·&nbsp; Built with <span>♥</span> using React · TypeScript · Vite &nbsp;·&nbsp; 2025</p>
+    <p style="margin-top:8px; font-size:.72rem; opacity:.4">project-overview.html · non-technical edition</p>
+  </footer>
+
+</main>
+</body>
+</html>
