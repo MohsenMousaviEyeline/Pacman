@@ -165,7 +165,19 @@ function movePlayer(player: Player, maze: number[][], dt: number): Player {
   return p;
 }
 
-export function updateEngine(state: EngineState, dt: number, inputDir: Direction | null): EngineState {
+export interface ParticleColorMap {
+  dot:   string;
+  power: string;
+  death: string;
+}
+
+export function updateEngine(
+  state: EngineState,
+  dt: number,
+  inputDir: Direction | null,
+  particleColors?: ParticleColorMap,
+): EngineState {
+  const PC = particleColors ?? { dot: '#00aaff', power: '#ffcc00', death: '#ffee00' };
   const { gameData } = state;
   if (gameData.state !== 'PLAYING') return state;
 
@@ -248,7 +260,7 @@ export function updateEngine(state: EngineState, dt: number, inputDir: Direction
       maze = maze.map((row, r) => r === pty ? row.map((c, col) => col === ptx ? CELL.EMPTY : c) : row);
       score += DOT_SCORE;
       dotsEaten++;
-      particles = [...particles, ...createParticles(player.pos.x + TILE_SIZE / 2, player.pos.y + TILE_SIZE / 2, '#00aaff', 4)];
+      particles = [...particles, ...createParticles(player.pos.x + TILE_SIZE / 2, player.pos.y + TILE_SIZE / 2, PC.dot, 4)];
       scorePopups = [...scorePopups, { x: player.pos.x + TILE_SIZE / 2, y: player.pos.y, score: DOT_SCORE, life: 1 }];
     } else if (cell === CELL.POWER) {
       maze = maze.map((row, r) => r === pty ? row.map((c, col) => col === ptx ? CELL.EMPTY : c) : row);
@@ -256,7 +268,7 @@ export function updateEngine(state: EngineState, dt: number, inputDir: Direction
       dotsEaten++;
       frightenedMultiplier = 1;
       ghosts = ghosts.map(g => frightenGhost(g));
-      particles = [...particles, ...createParticles(player.pos.x + TILE_SIZE / 2, player.pos.y + TILE_SIZE / 2, '#ffcc00', 12)];
+      particles = [...particles, ...createParticles(player.pos.x + TILE_SIZE / 2, player.pos.y + TILE_SIZE / 2, PC.power, 12)];
       scorePopups = [...scorePopups, { x: player.pos.x + TILE_SIZE / 2, y: player.pos.y, score: POWER_SCORE, life: 1 }];
     }
   }
@@ -302,7 +314,7 @@ export function updateEngine(state: EngineState, dt: number, inputDir: Direction
   });
 
   if (died) {
-    particles = [...particles, ...createParticles(player.pos.x + TILE_SIZE / 2, player.pos.y + TILE_SIZE / 2, '#ffee00', 20)];
+    particles = [...particles, ...createParticles(player.pos.x + TILE_SIZE / 2, player.pos.y + TILE_SIZE / 2, PC.death, 20)];
     return {
       ...state,
       player,

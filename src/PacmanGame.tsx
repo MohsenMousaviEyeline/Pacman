@@ -9,6 +9,7 @@ import {
 import type { Star } from './game/renderer';
 import { createInitialState, updateEngine } from './game/engine';
 import type { EngineState } from './game/engine';
+import { getColors, type Theme } from './game/constants';
 
 const CANVAS_W = MAZE_COLS * TILE_SIZE;
 const CANVAS_H = MAZE_ROWS * TILE_SIZE;
@@ -27,6 +28,13 @@ export default function PacmanGame() {
   const animFrameRef = useRef<number>(0);
   const starsRef = useRef<Star[]>(createStars(80, CANVAS_W, CANVAS_H));
   const globalTimerRef = useRef<number>(0);
+
+  // Theme state: useState drives JSX re-render; themeRef is read inside the animation loop
+  const [themeState, setThemeState] = useState<Theme>(
+    () => (localStorage.getItem('pacman-theme') as Theme) ?? 'CYBER'
+  );
+  const themeRef = useRef<Theme>(themeState);
+
   const [uiState, setUiState] = useState({
     score: 0,
     highScore: 0,
@@ -40,6 +48,13 @@ export default function PacmanGame() {
     init.gameData.state = 'PLAYING';
     stateRef.current = init;
     inputDirRef.current = null;
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    const next: Theme = themeRef.current === 'CYBER' ? 'CLASSIC' : 'CYBER';
+    themeRef.current = next;
+    localStorage.setItem('pacman-theme', next);
+    setThemeState(next);
   }, []);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -73,6 +88,13 @@ export default function PacmanGame() {
           gameData: { ...stateRef.current.gameData, state: 'MENU' },
         };
       }
+    }
+    // T key: toggle theme
+    if (e.code === 'KeyT') {
+      const next: Theme = themeRef.current === 'CYBER' ? 'CLASSIC' : 'CYBER';
+      themeRef.current = next;
+      localStorage.setItem('pacman-theme', next);
+      setThemeState(next);
     }
   }, [startGame]);
 
@@ -128,10 +150,16 @@ export default function PacmanGame() {
 
       const state = stateRef.current;
       const { gameData } = state;
+      const theme = themeRef.current;
+
+      // Particle colors depend on the active theme
+      const pc = theme === 'CLASSIC'
+        ? { dot: '#ffff00', power: '#ffffff', death: '#ffff00' }
+        : { dot: '#00aaff', power: '#ffcc00', death: '#ffee00' };
 
       // Update game state
       if (gameData.state === 'PLAYING') {
-        const newState = updateEngine(state, dt, inputDirRef.current);
+        const newState = updateEngine(state, dt, inputDirRef.current, pc);
         stateRef.current = newState;
 
         // Update UI every few frames
@@ -164,41 +192,44 @@ export default function PacmanGame() {
 
       // RENDER
       const s = stateRef.current;
+      const C = getColors(theme);
 
-      // Background stars (only on menu)
-      ctx.fillStyle = '#000010';
+      // Background fill (theme-aware)
+      ctx.fillStyle = C.BG;
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      if (s.gameData.state === 'MENU') {
+
+      // Starfield only in CYBER mode on the menu
+      if (s.gameData.state === 'MENU' && theme !== 'CLASSIC') {
         renderStarfield(ctx, starsRef.current, CANVAS_W, CANVAS_H);
       }
 
-      renderMaze(ctx, s.gameData.maze);
+      renderMaze(ctx, s.gameData.maze, theme);
 
       // Update and render particles
       const updatedParticles = updateParticles(s.particles, dt);
       stateRef.current = { ...stateRef.current, particles: updatedParticles };
-      renderParticles(ctx, updatedParticles);
+      renderParticles(ctx, updatedParticles, theme);
 
       // Render score popups
-      renderScorePopup(ctx, s.scorePopups);
+      renderScorePopup(ctx, s.scorePopups, theme);
 
       // Render ghosts
       for (const ghost of s.ghosts) {
-        renderGhost(ctx, ghost, globalTimerRef.current);
+        renderGhost(ctx, ghost, globalTimerRef.current, theme);
       }
 
       // Render pacman
-      renderPacman(ctx, s.player, s.dyingFrame);
+      renderPacman(ctx, s.player, s.dyingFrame, theme);
 
       // Overlays
       if (s.gameData.state === 'MENU') {
-        renderOverlay(ctx, 'CYBER-PAC', 'PRESS SPACE / ENTER TO START', CANVAS_W, CANVAS_H);
+        renderOverlay(ctx, 'CYBER-PAC', 'PRESS SPACE / ENTER TO START', CANVAS_W, CANVAS_H, theme);
       } else if (s.gameData.state === 'PAUSED') {
-        renderOverlay(ctx, 'PAUSED', 'PRESS SPACE TO RESUME', CANVAS_W, CANVAS_H);
+        renderOverlay(ctx, 'PAUSED', 'PRESS SPACE TO RESUME', CANVAS_W, CANVAS_H, theme);
       } else if (s.gameData.state === 'GAME_OVER') {
-        renderOverlay(ctx, 'GAME OVER', 'PRESS SPACE TO RETRY', CANVAS_W, CANVAS_H);
+        renderOverlay(ctx, 'GAME OVER', 'PRESS SPACE TO RETRY', CANVAS_W, CANVAS_H, theme);
       } else if (s.gameData.state === 'WIN') {
-        renderOverlay(ctx, 'YOU WIN!', 'PRESS SPACE TO PLAY AGAIN', CANVAS_W, CANVAS_H);
+        renderOverlay(ctx, 'YOU WIN!', 'PRESS SPACE TO PLAY AGAIN', CANVAS_W, CANVAS_H, theme);
       }
 
       animFrameRef.current = requestAnimationFrame(loop);
@@ -211,7 +242,7 @@ export default function PacmanGame() {
   const lifeIcons = Array.from({ length: uiState.lives }, (_, i) => i);
 
   return (
-    <div className="game-container">
+    <div className="game-container" data-theme={themeState}>
       <div className="game-header">
         <div className="score-box">
           <div className="score-label">SCORE</div>
@@ -221,7 +252,7 @@ export default function PacmanGame() {
           <span className="game-title">CYBER</span>
           <span className="game-title-accent">PAC</span>
         </div>
-        <div className="score-box">
+        <div className="score-box score-box--right">
           <div className="score-label">HIGH SCORE</div>
           <div className="score-value">{uiState.highScore.toString().padStart(6, '0')}</div>
         </div>
@@ -247,11 +278,20 @@ export default function PacmanGame() {
           ))}
         </div>
         <div className="controls-hint">
-          WASD / ↑↓←→ to move • SPACE to pause
+          WASD / ↑↓←→ • SPACE pause • T theme
         </div>
-        <div className="level-display">
-          <span className="lives-label">LEVEL</span>
-          <span className="level-value">{uiState.level}</span>
+        <div className="footer-right">
+          <button
+            className={`theme-toggle theme-toggle--${themeState.toLowerCase()}`}
+            onClick={toggleTheme}
+            title={themeState === 'CYBER' ? 'Switch to Classic arcade mode' : 'Switch to Cyber mode'}
+          >
+            {themeState === 'CYBER' ? '🕹 CLASSIC' : '⚡ CYBER'}
+          </button>
+          <div className="level-display">
+            <span className="lives-label">LEVEL</span>
+            <span className="level-value">{uiState.level}</span>
+          </div>
         </div>
       </div>
     </div>

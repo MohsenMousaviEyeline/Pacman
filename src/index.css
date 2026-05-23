@@ -253,6 +253,105 @@ body::after {
   font-weight: 700;
 }
 
+/* Footer right group: theme toggle + level */
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+  min-width: 160px;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--text-dim);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 9px;
+  letter-spacing: 2px;
+  padding: 3px 8px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  user-select: none;
+  white-space: nowrap;
+}
+.theme-toggle--cyber:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+}
+.theme-toggle--classic:hover {
+  border-color: var(--neon-yellow);
+  color: var(--neon-yellow);
+  box-shadow: 0 0 8px rgba(255, 238, 0, 0.3);
+}
+
+/* ── Classic arcade mode HUD overrides ────────────────────── */
+
+[data-theme="CLASSIC"] {
+  background: #000 !important;
+  border-color: #0000cc !important;
+  box-shadow: none !important;
+}
+
+[data-theme="CLASSIC"]::before,
+[data-theme="CLASSIC"]::after {
+  display: none !important;
+}
+
+[data-theme="CLASSIC"] .game-title,
+[data-theme="CLASSIC"] .game-title-accent {
+  color: #ffffff !important;
+  text-shadow: none !important;
+  animation: none !important;
+  font-family: monospace, monospace !important;
+  letter-spacing: 4px;
+}
+
+[data-theme="CLASSIC"] .score-value {
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
+
+[data-theme="CLASSIC"] .score-label,
+[data-theme="CLASSIC"] .lives-label,
+[data-theme="CLASSIC"] .controls-hint {
+  color: #aaaaaa !important;
+}
+
+[data-theme="CLASSIC"] .life-icon {
+  color: #ffff00 !important;
+  text-shadow: none !important;
+}
+
+[data-theme="CLASSIC"] .level-value {
+  color: #ffff00 !important;
+  text-shadow: none !important;
+}
+
+[data-theme="CLASSIC"] .canvas-wrapper {
+  border-color: #0000cc !important;
+  box-shadow: none !important;
+}
+
+/* Remove scanline and gradient overlays in classic mode */
+[data-theme="CLASSIC"] .canvas-wrapper::before,
+[data-theme="CLASSIC"] .canvas-wrapper::after {
+  display: none !important;
+}
+
+[data-theme="CLASSIC"] .theme-toggle {
+  color: #aaaaaa;
+  border-color: #333333;
+}
+[data-theme="CLASSIC"] .theme-toggle:hover {
+  color: #ffff00;
+  border-color: #ffff00;
+  box-shadow: none;
+}
+
 @media (max-width: 640px) {
   .game-container {
     padding: 8px;

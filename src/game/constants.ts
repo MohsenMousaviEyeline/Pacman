@@ -51,4 +51,25 @@ export const COLORS = {
   HUD_BG: '#000820',
 };
 
+export type Theme = 'CYBER' | 'CLASSIC';
+
+export const CLASSIC_COLORS = {
+  BG:          '#000000',
+  WALL:        '#0000cc',
+  WALL_BORDER: '#0000cc',
+  WALL_GLOW:   '#0000cc',
+  DOT:         '#ffff00',
+  POWER:       '#ffffff',
+  PACMAN:      '#ffff00',
+  PACMAN_GLOW: '#ffff00',
+  TEXT:        '#ffffff',
+  HUD_BG:      '#000000',
+};
+
+export type ThemeColors = typeof COLORS;
+
+export function getColors(theme: Theme): ThemeColors {
+  return theme === 'CLASSIC' ? CLASSIC_COLORS : COLORS;
+}
+
 export const TILE_SIZE_EXPORT = TILE_SIZE;

@@ -1,6 +1,6 @@
 import { MAZE_COLS, MAZE_ROWS, TILE_SIZE, CELL } from './maze';
 import type { Ghost, Player, Direction } from './types';
-import { COLORS } from './constants';
+import { getColors, type Theme, type ThemeColors } from './constants';
 
 const WALL = CELL.WALL;
 
@@ -9,8 +9,9 @@ function isWall(maze: number[][], row: number, col: number): boolean {
   return maze[row][col] === WALL;
 }
 
-export function renderMaze(ctx: CanvasRenderingContext2D, maze: number[][]) {
-  ctx.fillStyle = COLORS.BG;
+export function renderMaze(ctx: CanvasRenderingContext2D, maze: number[][], theme: Theme) {
+  const C = getColors(theme);
+  ctx.fillStyle = C.BG;
   ctx.fillRect(0, 0, MAZE_COLS * TILE_SIZE, MAZE_ROWS * TILE_SIZE);
 
   for (let row = 0; row < MAZE_ROWS; row++) {
@@ -20,29 +21,41 @@ export function renderMaze(ctx: CanvasRenderingContext2D, maze: number[][]) {
       const y = row * TILE_SIZE;
 
       if (cell === CELL.WALL) {
-        drawWall(ctx, maze, row, col, x, y);
+        drawWall(ctx, maze, row, col, x, y, C, theme);
       } else if (cell === CELL.DOT) {
-        drawDot(ctx, x, y);
+        drawDot(ctx, x, y, C, theme);
       } else if (cell === CELL.POWER) {
-        drawPowerPellet(ctx, x, y);
+        drawPowerPellet(ctx, x, y, C, theme);
       } else if (cell === CELL.GHOST_DOOR) {
-        drawGhostDoor(ctx, x, y);
+        drawGhostDoor(ctx, x, y, theme);
       }
     }
   }
 }
 
-function drawWall(ctx: CanvasRenderingContext2D, maze: number[][], row: number, col: number, x: number, y: number) {
+function drawWall(
+  ctx: CanvasRenderingContext2D,
+  maze: number[][],
+  row: number,
+  col: number,
+  x: number,
+  y: number,
+  C: ThemeColors,
+  theme: Theme,
+) {
   const ts = TILE_SIZE;
 
   // Fill wall background
-  ctx.fillStyle = COLORS.WALL;
+  ctx.fillStyle = C.WALL;
   ctx.fillRect(x, y, ts, ts);
 
+  // Classic mode: solid fill only, no neon border
+  if (theme === 'CLASSIC') return;
+
   // Draw neon border lines on exposed edges
-  ctx.strokeStyle = COLORS.WALL_BORDER;
+  ctx.strokeStyle = C.WALL_BORDER;
   ctx.lineWidth = 2;
-  ctx.shadowColor = COLORS.WALL_GLOW;
+  ctx.shadowColor = C.WALL_GLOW;
   ctx.shadowBlur = 8;
 
   const top = !isWall(maze, row - 1, col);
@@ -71,12 +84,14 @@ function drawWall(ctx: CanvasRenderingContext2D, maze: number[][], row: number, 
   ctx.shadowBlur = 0;
 }
 
-function drawDot(ctx: CanvasRenderingContext2D, x: number, y: number) {
+function drawDot(ctx: CanvasRenderingContext2D, x: number, y: number, C: ThemeColors, theme: Theme) {
   const cx = x + TILE_SIZE / 2;
   const cy = y + TILE_SIZE / 2;
-  ctx.fillStyle = COLORS.DOT;
-  ctx.shadowColor = '#00aaff';
-  ctx.shadowBlur = 6;
+  ctx.fillStyle = C.DOT;
+  if (theme !== 'CLASSIC') {
+    ctx.shadowColor = '#00aaff';
+    ctx.shadowBlur = 6;
+  }
   ctx.beginPath();
   ctx.arc(cx, cy, 2, 0, Math.PI * 2);
   ctx.fill();
@@ -88,20 +103,29 @@ export function updatePowerPulse(dt: number) {
   powerPulse = (powerPulse + dt * 0.003) % (Math.PI * 2);
 }
 
-function drawPowerPellet(ctx: CanvasRenderingContext2D, x: number, y: number) {
+function drawPowerPellet(ctx: CanvasRenderingContext2D, x: number, y: number, C: ThemeColors, theme: Theme) {
   const cx = x + TILE_SIZE / 2;
   const cy = y + TILE_SIZE / 2;
-  const r = 5 + Math.sin(powerPulse) * 1.5;
-  ctx.fillStyle = COLORS.POWER;
-  ctx.shadowColor = '#ffaa00';
-  ctx.shadowBlur = 15 + Math.sin(powerPulse) * 5;
+  // Classic: static radius; Cyber: pulsing radius
+  const r = theme === 'CLASSIC' ? 5 : 5 + Math.sin(powerPulse) * 1.5;
+  ctx.fillStyle = C.POWER;
+  if (theme !== 'CLASSIC') {
+    ctx.shadowColor = '#ffaa00';
+    ctx.shadowBlur = 15 + Math.sin(powerPulse) * 5;
+  }
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fill();
   ctx.shadowBlur = 0;
 }
 
-function drawGhostDoor(ctx: CanvasRenderingContext2D, x: number, y: number) {
+function drawGhostDoor(ctx: CanvasRenderingContext2D, x: number, y: number, theme: Theme) {
+  if (theme === 'CLASSIC') {
+    // Classic: plain light pink bar, no glow
+    ctx.fillStyle = '#ffb8ff';
+    ctx.fillRect(x + 2, y + TILE_SIZE / 2 - 1, TILE_SIZE - 4, 2);
+    return;
+  }
   ctx.fillStyle = '#ff88ff';
   ctx.shadowColor = '#ff44ff';
   ctx.shadowBlur = 6;
@@ -109,7 +133,8 @@ function drawGhostDoor(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.shadowBlur = 0;
 }
 
-export function renderPacman(ctx: CanvasRenderingContext2D, player: Player, dyingFrame: number) {
+export function renderPacman(ctx: CanvasRenderingContext2D, player: Player, dyingFrame: number, theme: Theme) {
+  const C = getColors(theme);
   const cx = player.pos.x + TILE_SIZE / 2;
   const cy = player.pos.y + TILE_SIZE / 2;
   const r = TILE_SIZE / 2 - 1;
@@ -128,11 +153,13 @@ export function renderPacman(ctx: CanvasRenderingContext2D, player: Player, dyin
   startAngle = rotation + mouthOpen;
   endAngle = rotation + Math.PI * 2 - mouthOpen;
 
-  // Glow effect
-  ctx.shadowColor = COLORS.PACMAN_GLOW;
-  ctx.shadowBlur = 20;
+  // Glow effect (cyber only)
+  if (theme !== 'CLASSIC') {
+    ctx.shadowColor = C.PACMAN_GLOW;
+    ctx.shadowBlur = 20;
+  }
 
-  ctx.fillStyle = COLORS.PACMAN;
+  ctx.fillStyle = C.PACMAN;
   ctx.beginPath();
   ctx.moveTo(cx, cy);
   ctx.arc(cx, cy, r, startAngle, endAngle);
@@ -162,7 +189,7 @@ function getDirAngle(dir: Direction): number {
   }
 }
 
-export function renderGhost(ctx: CanvasRenderingContext2D, ghost: Ghost, globalTimer: number) {
+export function renderGhost(ctx: CanvasRenderingContext2D, ghost: Ghost, globalTimer: number, theme: Theme) {
   if (!ghost.active) return;
 
   const cx = ghost.pos.x + TILE_SIZE / 2;
@@ -176,22 +203,25 @@ export function renderGhost(ctx: CanvasRenderingContext2D, ghost: Ghost, globalT
 
   if (ghost.mode === 'FRIGHTENED') {
     const timeLeft = ghost.frightenedTimer;
-    if (timeLeft < 2000 && Math.floor(globalTimer / 250) % 2 === 0) {
-      bodyColor = '#ffffff';
+    const flashing = timeLeft < 2000 && Math.floor(globalTimer / 250) % 2 === 0;
+    if (theme === 'CLASSIC') {
+      bodyColor = flashing ? '#ffffff' : '#0000cc';
     } else {
-      bodyColor = '#1a0060';
+      bodyColor = flashing ? '#ffffff' : '#1a0060';
     }
-    eyeColor = '#ff4444';
-    pupilColor = '#ff0000';
+    eyeColor = theme === 'CLASSIC' ? '#ffffff' : '#ff4444';
+    pupilColor = theme === 'CLASSIC' ? '#ffffff' : '#ff0000';
   } else if (ghost.mode === 'EATEN') {
     // Just draw eyes when eaten
     drawGhostEyes(ctx, cx, cy, r, '#fff', '#00f');
     return;
   }
 
-  // Glow
-  ctx.shadowColor = ghost.mode === 'FRIGHTENED' ? '#4400ff' : ghost.glowColor;
-  ctx.shadowBlur = 15;
+  // Glow (cyber only)
+  if (theme !== 'CLASSIC') {
+    ctx.shadowColor = ghost.mode === 'FRIGHTENED' ? '#4400ff' : ghost.glowColor;
+    ctx.shadowBlur = 15;
+  }
 
   // Ghost body - dome top + wavy bottom
   ctx.fillStyle = bodyColor;
@@ -213,8 +243,8 @@ export function renderGhost(ctx: CanvasRenderingContext2D, ghost: Ghost, globalT
   ctx.closePath();
   ctx.fill();
 
-  // Stripes / circuit pattern on body
-  if (ghost.mode !== 'FRIGHTENED') {
+  // Circuit stripes (cyber only, not frightened)
+  if (ghost.mode !== 'FRIGHTENED' && theme !== 'CLASSIC') {
     ctx.strokeStyle = 'rgba(255,255,255,0.15)';
     ctx.lineWidth = 1;
     ctx.shadowBlur = 0;
@@ -229,10 +259,11 @@ export function renderGhost(ctx: CanvasRenderingContext2D, ghost: Ghost, globalT
 
   drawGhostEyes(ctx, cx, cy, r, eyeColor, pupilColor);
 
-  // Frightened face
+  // Frightened face — classic: white wavy mouth; cyber: red
   if (ghost.mode === 'FRIGHTENED') {
-    ctx.strokeStyle = '#ff6666';
+    ctx.strokeStyle = theme === 'CLASSIC' ? '#ffffff' : '#ff6666';
     ctx.lineWidth = 2;
+    ctx.shadowBlur = 0;
     ctx.beginPath();
     ctx.moveTo(cx - r * 0.5, cy + r * 0.3);
     for (let i = 0; i < 5; i++) {
@@ -273,31 +304,51 @@ function drawGhostEyes(ctx: CanvasRenderingContext2D, cx: number, cy: number, r:
 
 // HUD is rendered in React overlay
 
-export function renderOverlay(ctx: CanvasRenderingContext2D, text: string, subText: string, canvasW: number, canvasH: number) {
-  ctx.fillStyle = 'rgba(0,0,20,0.75)';
+export function renderOverlay(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  subText: string,
+  canvasW: number,
+  canvasH: number,
+  theme: Theme,
+) {
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
   ctx.fillRect(0, 0, canvasW, canvasH);
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#00ffcc';
-  ctx.shadowColor = '#00ffcc';
-  ctx.shadowBlur = 20;
-  ctx.font = 'bold 36px "Orbitron", monospace';
-  ctx.fillText(text, canvasW / 2, canvasH / 2 - 20);
 
-  ctx.shadowBlur = 10;
-  ctx.font = '16px "Orbitron", monospace';
-  ctx.fillStyle = '#88ccff';
-  ctx.fillText(subText, canvasW / 2, canvasH / 2 + 20);
+  if (theme === 'CLASSIC') {
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 36px monospace';
+    ctx.fillText(text, canvasW / 2, canvasH / 2 - 20);
+    ctx.font = '16px monospace';
+    ctx.fillStyle = '#ffff00';
+    ctx.fillText(subText, canvasW / 2, canvasH / 2 + 20);
+  } else {
+    ctx.fillStyle = '#00ffcc';
+    ctx.shadowColor = '#00ffcc';
+    ctx.shadowBlur = 20;
+    ctx.font = 'bold 36px "Orbitron", monospace';
+    ctx.fillText(text, canvasW / 2, canvasH / 2 - 20);
 
-  ctx.shadowBlur = 0;
+    ctx.shadowBlur = 10;
+    ctx.font = '16px "Orbitron", monospace';
+    ctx.fillStyle = '#88ccff';
+    ctx.fillText(subText, canvasW / 2, canvasH / 2 + 20);
+
+    ctx.shadowBlur = 0;
+  }
 }
 
-export function renderParticles(ctx: CanvasRenderingContext2D, particles: Particle[]) {
+export function renderParticles(ctx: CanvasRenderingContext2D, particles: Particle[], theme: Theme) {
   for (const p of particles) {
     ctx.globalAlpha = p.life;
     ctx.fillStyle = p.color;
-    ctx.shadowColor = p.color;
-    ctx.shadowBlur = 10;
+    if (theme !== 'CLASSIC') {
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 10;
+    }
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
     ctx.fill();
@@ -374,14 +425,18 @@ export function createStars(count: number, w: number, h: number): Star[] {
   return stars;
 }
 
-export function renderScorePopup(ctx: CanvasRenderingContext2D, popups: ScorePopup[]) {
+export function renderScorePopup(ctx: CanvasRenderingContext2D, popups: ScorePopup[], theme: Theme) {
   ctx.textAlign = 'center';
   for (const p of popups) {
     ctx.globalAlpha = p.life;
-    ctx.fillStyle = '#ffee00';
-    ctx.shadowColor = '#ff9900';
-    ctx.shadowBlur = 15;
-    ctx.font = 'bold 14px "Orbitron", monospace';
+    ctx.fillStyle = theme === 'CLASSIC' ? '#ffffff' : '#ffee00';
+    if (theme !== 'CLASSIC') {
+      ctx.shadowColor = '#ff9900';
+      ctx.shadowBlur = 15;
+    }
+    ctx.font = theme === 'CLASSIC'
+      ? 'bold 14px monospace'
+      : 'bold 14px "Orbitron", monospace';
     ctx.fillText('+' + p.score, p.x, p.y);
   }
   ctx.globalAlpha = 1;
