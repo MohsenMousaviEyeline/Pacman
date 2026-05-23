@@ -45,7 +45,7 @@ export const COLORS = {
   WALL_GLOW: '#0066ff',
   DOT: '#aaeeff',
   POWER: '#ffcc00',
-  PACMAN: '#ffee00',
+  PACMAN: '#fe0090',
   PACMAN_GLOW: '#ff9900',
   TEXT: '#00ffcc',
   HUD_BG: '#000820',
